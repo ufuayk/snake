@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ufuk's Laya Snake</title>
+
+<style>
+:root{--bg:#000;--fg:#fff;--mut:#8c8c8c;--dim:#4d4d4d;--line:#262626;color-scheme:dark}
+@media(prefers-color-scheme:light){:root{--bg:#fff;--fg:#000;--mut:#707070;--dim:#b8b8b8;--line:#e4e4e4;color-scheme:light}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);font:13px/1.45 -apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.v,.num,.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+header{text-align:center;padding:44px 0 30px}
+header h1{margin:0;font-size:12px;font-weight:500;letter-spacing:.38em;text-indent:.38em}
+header p{margin:8px 0 0;color:var(--mut);font-size:12px}
+main{max-width:960px;margin:auto;padding:0 24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.panel{border:1px solid var(--line);border-radius:10px}
+.game{padding:20px}
+.lbl{font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
+.top .num{font-size:12px;color:var(--mut)}.top .num b{color:var(--fg);font-weight:500}
+.board{position:relative;aspect-ratio:1;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.board canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.ov.h{display:none}.ov h2{margin:0;font-size:20px;font-weight:300;letter-spacing:.02em}.ov p{margin:0 0 14px;color:var(--mut);font-size:12px}
+.side{position:relative}.inner{position:absolute;inset:0;display:flex;flex-direction:column}
+.sec{padding:16px 20px;border-top:1px solid var(--line)}.sec:first-child{border-top:0}
+.sec .top{margin-bottom:10px}.sec.grow{flex:1;min-height:0;display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:64px 1fr 38px;gap:14px;align-items:center;height:25px;color:var(--mut);transition:opacity .2s}
+.row.off{opacity:.28}.row.best{color:var(--fg)}
+.t{height:2px;background:var(--line);border-radius:2px;overflow:hidden}.t i{display:block;height:100%;width:0;background:var(--dim);transition:width .12s}
+.row.best .t i{background:var(--fg)}.v{text-align:right;font-size:12px}
+.note{margin-top:4px;font-size:11px;color:var(--mut)}.note:empty{display:none}
+.chart{position:relative;flex:1;min-height:60px}.chart canvas{position:absolute;inset:0;width:100%;height:100%}
+.foot{display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:var(--mut)}.foot b{color:var(--fg);font-weight:500}
+.tabs{display:flex;gap:20px}
+.tabs button{background:none;border:0;border-bottom:1px solid transparent;color:var(--mut);padding:0 0 5px;font:inherit;font-size:12px;letter-spacing:.04em;cursor:pointer}
+.tabs button.on{color:var(--fg);border-color:var(--fg)}
+.btns{display:flex;gap:10px;margin-bottom:14px}
+.btn{height:38px;border-radius:99px;padding:0 22px;font:inherit;font-size:13px;font-weight:500;letter-spacing:.02em;cursor:pointer;border:1px solid var(--fg);background:var(--fg);color:var(--bg);transition:opacity .15s}
+.btn:hover{opacity:.82}.btn.o{background:transparent;color:var(--fg);border-color:var(--line)}.btn.o:hover{border-color:var(--mut);opacity:1}.btns .btn:first-child{flex:1}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;margin:6px 0 0;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--dim)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;margin-top:-6px;border-radius:50%;background:var(--fg);border:0}
+input[type=range]::-moz-range-track{height:1px;background:var(--dim)}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--fg);border:0}
+footer{text-align:center;color:var(--dim);font-size:11px;letter-spacing:.04em;padding:26px 0 36px}
+@media(max-width:780px){main{grid-template-columns:1fr}.side{position:static}.inner{position:static}.sec.grow{min-height:190px}}
+</style>
+
+</head>
+<body>
+<header><h1>Ufuk's LAYA Snake</h1><p>A decision model (LAYA-MLX) plays Snake</p></header>
+
+<main>
+  <section class="panel game">
+    <div class="top"><span class="lbl">Game</span><span class="num">Score <b id="sc">0</b> &nbsp;·&nbsp; Best <b id="bs">0</b></span></div>
+    <div class="board">
+      <canvas id="cv"></canvas>
+      <div class="ov" id="ov"><h2 id="ovt">Ready</h2><p id="ovp">Press space to start</p><button class="btn" id="ovb">Start</button></div>
+    </div>
+  </section>
+
+  <section class="panel side"><div class="inner">
+    <div class="sec">
+      <div class="top"><span class="lbl">Decision</span><span class="num">Oracle match <b id="ag">–</b></span></div>
+      <div id="bars"></div>
+      <div class="note" id="nt"></div>
+    </div>
+
+    <div class="sec grow">
+      <div class="top"><span class="lbl">Latency</span><span class="num"><b id="ms" style="font-size:15px">–</b> ms</span></div>
+      <div class="chart"><canvas id="gr"></canvas></div>
+      <div class="foot"><span class="mono">p50 <b id="p50">–</b> · p95 <b id="p95">–</b></span><span>last 80 decisions</span></div>
+    </div>
+
+    <div class="sec">
+      <div class="top" style="margin-bottom:14px"><div class="tabs"><button id="mL" class="on">Laya</button><button id="mH">Human</button></div><span class="num"><b id="tv">50</b> ms / step</span></div>
+      <div class="btns"><button class="btn" id="go">Start</button><button class="btn o" id="rs">Reset</button></div>
+      <input type="range" id="tick" min="15" max="300" value="50" aria-label="Step interval">
+    </div>
+  </div></section>
+</main>
+<footer>Space — start / pause &nbsp;·&nbsp; Arrows or WASD in Human mode</footer>
+
+<script>
+  
+const N=20,INS='Which move reaches the apple soon and stays alive?',D={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]},K=Object.keys(D),
+ OPP={up:'down',down:'up',left:'right',right:'left'},AR={up:'↑',down:'↓',left:'←',right:'→'};
+const $=id=>document.getElementById(id),key=p=>p[1]*N+p[0];
+const dark=()=>matchMedia('(prefers-color-scheme: dark)').matches,ink=a=>`rgba(${dark()?'255,255,255':'0,0,0'},${a})`;
+let sn,dir,food,score,hunger,run=false,mode='laya',best=0,q=null,over=false,st={n:0,ag:0},lat=[];
+$('bars').innerHTML=K.map(k=>`<div class="row" id="r_${k}"><span>${AR[k]}&nbsp; ${k[0].toUpperCase()+k.slice(1)}</span><div class="t"><i id="b_${k}"></i></div><span class="v" id="p_${k}">–</span></div>`).join('');
+
+/* canvases: crisp on retina, follow container size */
+function setup(c){const d=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=Math.round(w*d);c.height=Math.round(h*d);const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);return[x,w,h]}
+const redraw=()=>{if(sn){draw();graph()}};
+new ResizeObserver(redraw).observe($('cv'));new ResizeObserver(redraw).observe($('gr'));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
+
+function draw(){const[g,W]=setup($('cv')),C=W/N;
+ g.fillStyle=ink(.16);for(let y=0;y<N;y++)for(let x=0;x<N;x++){g.beginPath();g.arc(x*C+C/2,y*C+C/2,1,0,7);g.fill()}
+ const fx=food[0]*C+C/2,fy=food[1]*C+C/2;g.strokeStyle=ink(1);g.lineWidth=1.6;g.beginPath();g.arc(fx,fy,C*.27,0,7);g.stroke();
+ g.fillStyle=ink(1);g.beginPath();g.arc(fx,fy,1.8,0,7);g.fill();
+ for(let i=sn.length-1;i>=0;i--){const s=sn[i],ins=i?C*.17:C*.09;g.fillStyle=ink(i?Math.max(.22,.85-i*.035):1);
+  g.beginPath();g.roundRect(s[0]*C+ins,s[1]*C+ins,C-2*ins,C-2*ins,C*.28);g.fill()}}
+
+function graph(){const[g,W,H]=setup($('gr')),mx=Math.max(10,Math.ceil(Math.max(...lat,1)/10)*10),pl=28,pb=8,Y=v=>pb+(H-2*pb)*(1-v/mx);
+ g.font='10px ui-monospace,Menlo,monospace';g.textBaseline='middle';g.lineWidth=1;
+ [0,.5,1].forEach(f=>{const y=Y(mx*f);g.strokeStyle=ink(.12);g.beginPath();g.moveTo(pl,y);g.lineTo(W,y);g.stroke();g.fillStyle=ink(.45);g.fillText(Math.round(mx*f),0,y)});
+ if(lat.length<2)return;const n=lat.length,X=i=>pl+(80-n+i)*(W-pl)/79;
+ const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,ink(.16));gr.addColorStop(1,ink(0));
+ g.beginPath();lat.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));
+ g.strokeStyle=ink(.95);g.lineWidth=1.4;g.lineJoin='round';g.stroke();
+ g.lineTo(X(n-1),Y(0));g.lineTo(X(0),Y(0));g.fillStyle=gr;g.fill();
+ g.fillStyle=ink(1);g.beginPath();g.arc(X(n-1),Y(lat[n-1]),2.6,0,7);g.fill()}
+
+/* game logic */
+const nxt=(h,d)=>[h[0]+D[d][0],h[1]+D[d][1]],oob=p=>p[0]<0||p[1]<0||p[0]>=N||p[1]>=N;
+function reset(){sn=[[10,10],[9,10],[8,10]];dir='right';q=null;score=0;hunger=0;over=false;run=false;spawn();ui();draw();ov('Ready','Press space to start','Start');$('go').textContent='Start'}
+function spawn(){do food=[Math.random()*N|0,Math.random()*N|0];while(sn.some(s=>s[0]==food[0]&&s[1]==food[1]))}
+function analyze(d){const h=sn[0],p=nxt(h,d),eat=p[0]==food[0]&&p[1]==food[1],body=eat?sn:sn.slice(0,-1);
+ const dead=oob(p)||body.some(s=>s[0]==p[0]&&s[1]==p[1]),m={d,p,eat,dead,dist:-1,area:0};if(dead)return m;
+ const blk=new Set(body.map(key));blk.add(key(p));const seen=new Set([key(p)]),Q=[[p,0]];if(eat)m.dist=0;
+ for(let i=0;i<Q.length;i++){const[c,k]=Q[i];if(c[0]==food[0]&&c[1]==food[1]&&m.dist<0)m.dist=k;
+  for(const e of K){const n=nxt(c,e),kk=key(n);if(!oob(n)&&!blk.has(kk)&&!seen.has(kk)){seen.add(kk);Q.push([n,k+1])}}}
+ m.area=seen.size;return m}
+const cands=()=>K.filter(d=>d!=OPP[dir]).map(analyze).filter(m=>!m.dead);
+const rank=m=>(m.dist<0?-50:-m.dist)+(m.area<sn.length?-20:0);
+const desc=m=>`Move ${m.d}: `+(m.eat?'eats the apple':m.dist<0?'apple unreachable':`apple ${m.dist} steps away`)+(m.area<sn.length?`, traps snake in ${m.area} cells`:'');
+function row(k,p,best){const r=$('r_'+k);r.classList.toggle('off',p==null);r.classList.toggle('best',!!best);$('b_'+k).style.width=p==null?0:p*100+'%';$('p_'+k).textContent=p==null?'–':Math.round(p*100)+'%'}
+async function ask(){const c=cands();if(!c.length)return dir;
+ if(c.length==1){K.forEach(k=>row(k,null));row(c[0].d,1,1);$('nt').textContent='Only one safe move — model not called';return c[0].d}
+ const h=sn[0],dx=food[0]-h[0],dy=food[1]-h[1],orc=[...c].sort((a,b)=>rank(b)-rank(a))[0].d,
+  sh=[...c].sort(()=>Math.random()-.5),crit=sh.map(desc),   // options reshuffled every step to avoid position bias
+  state=`Snake ${N}x${N}. Head (${h[0]},${h[1]}) heading ${dir}. Length ${sn.length}. Apple ${Math.abs(dx)} ${dx>=0?'right':'left'}, ${Math.abs(dy)} ${dy>=0?'down':'up'}. Hungry ${hunger} steps.`;
+ const o=await(await fetch('/api/decide',{method:'POST',body:JSON.stringify({state,instructions:INS,criteria:crit,hints:sh.map(rank)})})).json();
+ if(o.error){$('nt').textContent='Error: '+o.error;run=false;return dir}
+ let pick=sh[0],bp=-1;sh.forEach((m,i)=>{if(o.probs[crit[i]]>bp){bp=o.probs[crit[i]];pick=m}});
+ K.forEach(k=>row(k,null));sh.forEach((m,i)=>row(m.d,o.probs[crit[i]],m==pick));
+ st.n++;if(pick.d==orc)st.ag++;$('ag').textContent=Math.round(100*st.ag/st.n)+'%';
+ lat.push(o.ms);if(lat.length>80)lat.shift();stats();
+ $('nt').textContent=o.parsed?'':'Could not read probabilities from the model output.';return pick.d}
+function stats(){const a=[...lat].sort((x,y)=>x-y),pc=f=>a[Math.min(a.length-1,Math.floor(a.length*f))];
+ $('ms').textContent=lat[lat.length-1].toFixed(1);$('p50').textContent=pc(.5).toFixed(1);$('p95').textContent=pc(.95).toFixed(1);graph()}
+function finish(t,p){over=true;run=false;ov(t,p,'Play again');$('go').textContent='Play again'}
+function step(d){dir=d;const m=analyze(d);if(m.dead)return finish('Game over','Score '+score);
+ sn.unshift(m.p);hunger++;if(m.eat){score++;hunger=0;best=Math.max(best,score);spawn()}else sn.pop();
+ if(hunger>N*N/2)finish('Stuck in a loop','No apple for 200 steps · score '+score);ui()}
+async function loop(){if(!run)return;const t=performance.now();let d=dir;
+ if(mode=='laya')d=await ask();else if(q&&q!=OPP[dir])d=q;
+ if(!run)return;step(d);draw();setTimeout(loop,Math.max(0,+$('tick').value-(performance.now()-t)))}
+function ui(){$('sc').textContent=score;$('bs').textContent=best}
+function ov(t,p,b){$('ovt').textContent=t;$('ovp').textContent=p;$('ovb').textContent=b;$('ov').classList.remove('h')}
+function toggle(){if(over)reset();run=!run;$('go').textContent=run?'Pause':'Resume';if(run){$('ov').classList.add('h');loop()}else ov('Paused','Press space to resume','Resume')}
+
+/* events */
+$('go').onclick=toggle;$('ovb').onclick=toggle;$('rs').onclick=()=>{reset();st={n:0,ag:0};$('ag').textContent='–'};
+$('tick').oninput=e=>$('tv').textContent=e.target.value;
+const setMode=m=>{mode=m;$('mL').classList.toggle('on',m=='laya');$('mH').classList.toggle('on',m=='human')};
+$('mL').onclick=()=>setMode('laya');$('mH').onclick=()=>setMode('human');
+addEventListener('keydown',e=>{if(e.target.tagName=='INPUT'&&e.code!='Space')return;
+ const m={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'}[e.key];
+ if(e.code=='Space'){e.preventDefault();toggle()}else if(m){q=m;e.preventDefault()}});
+fetch('/api/info').then(r=>r.json()).then(i=>{if(i.mock)$('nt').textContent='laya-mlx not found — using a simple mock policy.'});
+reset();
+
+</script>
+</body>
+</html>
